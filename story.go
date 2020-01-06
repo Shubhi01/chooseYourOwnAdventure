@@ -3,7 +3,36 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"text/template"
 )
+
+func init() {
+	tmp = template.Must(template.New("").Parse(defaultTemplate))
+}
+
+var tmp *template.Template
+
+var defaultTemplate = `<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>
+            "Choose Your Own Adventure"
+        </title>
+    </head>
+    <body>
+        <h1>{{.Title}}</h1>
+        {{range .Paragraphs}}
+            <p>{{.}}</p>
+        {{end}}
+        <ul>
+            {{range .Options}}
+                <li><a href="/{{.Arc}}">{{.Text}}</a></li>
+            {{end}}
+        </ul>
+    </body>
+</html>`
 
 // ArcID is unique key for a story arc
 type ArcID string
@@ -20,6 +49,21 @@ type Arc struct {
 type Options struct {
 	Text string
 	Arc  ArcID
+}
+
+type handler struct {
+	s Story
+}
+
+func NewHandler(s Story) http.Handler {
+	return handler{s}
+}
+
+func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	err := tmp.Execute(rw, h.s["intro"])
+	if err != nil {
+		panic(err)
+	}
 }
 
 // NewStoryFromJSON returns a new story from json bytes
