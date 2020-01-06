@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	"text/template"
 )
 
@@ -60,10 +62,21 @@ func NewHandler(s Story) http.Handler {
 }
 
 func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	err := tmp.Execute(rw, h.s["intro"])
-	if err != nil {
-		panic(err)
+	path := strings.TrimSpace(r.URL.Path)
+	if path == "" || path == "/" {
+		path = "/intro"
 	}
+	path = path[1:]
+	if chapter, ok := h.s[ArcID(path)]; ok {
+		err := tmp.Execute(rw, chapter)
+		if err != nil {
+			log.Printf("%v", err)
+			http.Error(rw, "Something went wrong...", http.StatusInternalServerError)
+		}
+		return
+	}
+	http.Error(rw, "Chapter not found...", http.StatusNotFound)
+
 }
 
 // NewStoryFromJSON returns a new story from json bytes
