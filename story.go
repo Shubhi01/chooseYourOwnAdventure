@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"text/template"
 )
 
-func init() {
-	tmp = template.Must(template.New("").Parse(defaultTemplate))
+// func init() {
+// 	tmp = template.Must(template.New("").Parse(defaultTemplate))
+// }
+
+func initCLITemplate() {
+	fmt.Println("init")
+	tmp = template.Must(template.New("").Parse(defaultCLITemplate))
 }
 
 var tmp *template.Template
@@ -36,6 +42,16 @@ var defaultTemplate = `<!DOCTYPE html>
     </body>
 </html>`
 
+var defaultCLITemplate = `{{.Title}}
+
+	{{range .Paragraphs}}
+		{{.}}
+	{{end}}
+	{{range $index, $opt := .Options}}
+		Press {{$index}} to venture into {{$opt.Text}}
+	{{end}}
+`
+
 // ArcID is unique key for a story arc
 type ArcID string
 
@@ -60,6 +76,17 @@ type handler struct {
 
 type HandlerOption func(h *handler)
 
+// If we want to provide options to handler like a custom template,
+// custom parsing function, the options are:
+// 1. Pass individual options as arguments to NewHander func. This could
+// 	become cumbersome
+// 2. Create a struct which encapsulates all handler options and pass it as
+// 	an argument to NewHandler. It's difficult to define complex dependencies
+// 	between different options using this method
+// 3. Functional arguments return a function which takes pointer to handler
+// as argument and updates it with the passed option. (using closures)
+
+// WithTemplate is an example of using functional options
 func WithTemplate(t *template.Template) HandlerOption {
 	return func(h *handler) {
 		h.t = t
@@ -101,4 +128,25 @@ func NewStoryFromJSON(content []byte) Story {
 	}
 
 	return story
+}
+
+type CLIHandler struct {
+	s Story
+}
+
+func NewCLIHandler(s Story) CLIHandler {
+	return CLIHandler{s}
+}
+
+func (c CLIHandler) StartStory() {
+	initCLITemplate()
+	//tmp.Execute(os.Stdout, c.s["intro"])
+
+	chapter := "intro"
+	for {
+		tmp.Execute(os.Stdout, c.s[ArcID(chapter)])
+		var input int
+		fmt.Scanf("%d", &input)
+		chapter = string(c.s[ArcID(chapter)].Options[input-1].Arc)
+	}
 }
