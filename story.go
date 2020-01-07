@@ -55,10 +55,23 @@ type Options struct {
 
 type handler struct {
 	s Story
+	t *template.Template
 }
 
-func NewHandler(s Story) http.Handler {
-	return handler{s}
+type HandlerOption func(h *handler)
+
+func WithTemplate(t *template.Template) HandlerOption {
+	return func(h *handler) {
+		h.t = t
+	}
+}
+
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	h := handler{s, tmp}
+	for _, opt := range opts {
+		opt(&h)
+	}
+	return h
 }
 
 func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
